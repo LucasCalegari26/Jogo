@@ -1,17 +1,143 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Jogo do Dino</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Dino Game com Tigrinho</title>
+  <style>
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #f7f7f7;
+      border: 2px solid #000;
+    }
+  </style>
 </head>
 <body>
-  <div class="game-container">
-    <div id="dino"></div>
-    <div id="cactus"></div>
-  </div>
+  <!-- Canvas onde o jogo acontece -->
+  <canvas id="gameCanvas" width="1000" height="300"></canvas>
 
-  <script src="script.js"></script>
+  <!-- Imagens utilizadas no jogo -->
+  <img id="tigrinhoImg" src="tigrinho.png" style="display:none;" />
+  <img id="carteiraImg" src="carteira.png" style="display:none;" />
+
+  <script>
+    // Obtém o canvas e o contexto de desenho 2D
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Carrega as imagens do tigrinho e da carteira de trabalho
+    const tigrinhoImg = document.getElementById('tigrinhoImg');
+    const carteiraImg = document.getElementById('carteiraImg');
+
+    // Configurações do "tigrinho" (jogador)
+    let dino = { x: 50, y: 220, width: 60, height: 60, vy: 0, jumping: false };
+    let gravity = 2; // gravidade
+    let ground = 220; // posição do chão (eixo Y)
+
+    // Configurações do obstáculo (carteira de trabalho)
+    let obstacle = { x: 1000, y: 220, width: 40, height: 60, speed: 6 };
+    let score = 0; // pontuação
+    let gameOver = false; // estado do jogo
+
+    // Alternância de obstáculos: 1, depois 2, depois 1 novamente
+    let obstaclePattern = [1, 2, 1]; // padrão de obstáculos
+    let obstacleIndex = 0; // índice atual do padrão
+    let obstacles = []; // array de obstáculos em cena
+
+    // Cria obstáculos com base no padrão
+    function spawnObstacle() {
+      let count = obstaclePattern[obstacleIndex];
+      for (let i = 0; i < count; i++) {
+        obstacles.push({
+          x: canvas.width + i * 50, // reduzido para deixar obstáculos mais próximos
+          y: 220,
+          width: 40,
+          height: 60,
+          speed: 6
+        });
+      }
+      obstacleIndex = (obstacleIndex + 1) % obstaclePattern.length;
+    }
+
+    // Evento de pulo ao apertar a tecla espaço
+    document.addEventListener('keydown', function (e) {
+      if (e.code === 'Space' && !dino.jumping && !gameOver) {
+        dino.vy = -32; // aumento da força do pulo
+        dino.jumping = true;
+      }
+    });
+
+    // Atualiza a lógica do jogo (movimento, colisão, pontuação)
+    function update() {
+      if (gameOver) return;
+
+      // Aplica a gravidade e movimenta o personagem
+      dino.y += dino.vy;
+      dino.vy += gravity;
+
+      // Impede que ele afunde no chão
+      if (dino.y >= ground) {
+        dino.y = ground;
+        dino.jumping = false;
+      }
+
+      // Atualiza posição dos obstáculos
+      for (let i = obstacles.length - 1; i >= 0; i--) {
+        const obs = obstacles[i];
+        obs.x -= obs.speed;
+
+        // Verifica colisão entre tigrinho e cada obstáculo
+        if (
+          dino.x < obs.x + obs.width &&
+          dino.x + dino.width > obs.x &&
+          dino.y + dino.height > obs.y
+        ) {
+          gameOver = true;
+          alert('Game Over! Pontuação: ' + score);
+        }
+
+        // Remove obstáculos que saíram da tela
+        if (obs.x + obs.width < 0) {
+          obstacles.splice(i, 1);
+          // Quando todos os obstáculos forem removidos, incrementa pontuação e cria novos
+          if (obstacles.length === 0) {
+            score++;
+            spawnObstacle();
+          }
+        }
+      }
+    }
+
+    // Desenha os elementos na tela (tigrinho, obstáculos, pontuação)
+    function draw() {
+      // Limpa o canvas a cada frame
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Desenha o tigrinho
+      ctx.drawImage(tigrinhoImg, dino.x, dino.y, dino.width, dino.height);
+
+      // Desenha cada carteira de trabalho (obstáculo)
+      for (let obs of obstacles) {
+        ctx.drawImage(carteiraImg, obs.x, obs.y, obs.width, obs.height);
+      }
+
+      // Desenha a pontuação no canto superior esquerdo
+      ctx.fillStyle = 'black';
+      ctx.font = '20px Arial';
+      ctx.fillText('Score: ' + score, 10, 25);
+    }
+
+    // Função principal do jogo, chamada repetidamente
+    function gameLoop() {
+      update();
+      draw();
+      requestAnimationFrame(gameLoop); // chama o próximo frame
+    }
+
+    // Inicia o jogo quando as imagens forem carregadas
+    window.onload = () => {
+      spawnObstacle(); // começa com o primeiro obstáculo
+      gameLoop();
+    };
+  </script>
 </body>
 </html>
